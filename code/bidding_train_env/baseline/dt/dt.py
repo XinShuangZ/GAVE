@@ -27,9 +27,7 @@ class CausalSelfAttention(nn.Module):
         self.value = nn.Linear(config['n_embd'], config['n_embd'])
         self.attn_drop = nn.Dropout(config['attn_pdrop'])
         self.resid_drop = nn.Dropout(config['resid_pdrop'])
-        self.register_buffer("bias",
-                             torch.tril(torch.ones(config['n_ctx'], config['n_ctx'])).view(1, 1, config['n_ctx'],
-                                                                                           config['n_ctx']))
+        self.register_buffer("bias", torch.tril(torch.ones(config['n_ctx'], config['n_ctx'])).view(1, 1, config['n_ctx'], config['n_ctx']))
         self.register_buffer("masked_bias", torch.tensor(-1e4))
 
         self.proj = nn.Linear(config['n_embd'], config['n_embd'])
@@ -79,7 +77,7 @@ class GAVE(nn.Module):
 
     def __init__(self, state_dim, act_dim, state_mean, state_std, hidden_size=64, action_tanh=False, K=20,
                  max_ep_len=96, scale=2000, warmup_steps=10000, weight_decay=0.0001,learning_rate=0.0001, time_dim=8,
-                 target_return=4, device="cpu", expectile=0.99,
+                 target_return=4, device="cpu", expectile=0.99, 
                  block_config={
                      "n_ctx": 1024,
                      "n_embd": 64,
@@ -152,8 +150,7 @@ class GAVE(nn.Module):
         )
 
         self.optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
-        self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer,
-                                                           lambda steps: min((steps + 1) / self.warmup_steps, 1))
+        self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lambda steps: min((steps + 1) / self.warmup_steps, 1))
 
         self.init_eval()
 
@@ -185,9 +182,9 @@ class GAVE(nn.Module):
         for block in self.transformer:
             x = block(x, stacked_attention_mask)
         x = x.reshape(-1, seq_length, self.length_times, self.hidden_size).permute(0, 2, 1, 3)
-        return_preds = self.predict_return(x[:, 2])
-        state_preds = self.predict_state(x[:, 2])
-        action_preds = self.predict_action(x[:, 1])
+        return_preds = self.predict_return(x[:, 2]) # a --> r
+        state_preds = self.predict_state(x[:, 2]) # a --> s
+        action_preds = self.predict_action(x[:, 1]) # s --> a
         if self.training:
             value_preds = self.predict_value(x[:, 1])
             beta_preds = self.predict_beta(x[:, 1]) + 0.5
@@ -274,6 +271,8 @@ class GAVE(nn.Module):
 
         # Loss function without learnable value function. It's more stable but may perform worse than a finetuned loss with learnable value function.
         # In this case, we simply boost exploration by maxmaizing curr_score_preds_1 in wo.
+        # 无可学习价值函数的损失函数。该损失函数的训练稳定性更强，但效果可能不如引入可学习价值函数并微调后的损失函数。
+        # 本场景下，我们仅通过最大化 wo 的 curr_score_preds_1 来强化模型的探索能力。
         # wo = torch.sigmoid(1 * (curr_score_preds_1-curr_score_preds.clone().detach()))
         # wo_frozen = wo.clone().detach()
         # loss1 = torch.mean((1-wo_frozen)*((action_preds - action_target) ** 2) + wo_frozen*((action_preds - action_1_frozen) ** 2))
@@ -334,6 +333,7 @@ class GAVE(nn.Module):
         self.eval_actions[-1] = action
         action = action.detach().cpu().numpy()
         return action
+    
     def init_eval(self):
         self.eval_states = None
         self.eval_actions = torch.zeros((0, self.act_dim), dtype=torch.float32).to(self.device)

@@ -12,8 +12,7 @@ import pickle
 
 class DtBiddingStrategy(BaseBiddingStrategy):
 
-    def __init__(self, budget=100, name="Decision-Transformer-PlayerStrategy", cpa=2, category=1,
-                 model_name="160000.pt", model_param = {
+    def __init__(self, budget=100, name="Decision-Transformer-PlayerStrategy", cpa=2, category=1, model_name="160000.pt", model_param = {
     "step_num": 300000,
     "save_step": 20000,
     "dir": "../data/trajectory/trajectory_data_all.csv",
@@ -45,11 +44,11 @@ class DtBiddingStrategy(BaseBiddingStrategy):
         with open(picklePath, 'rb') as f:
             normalize_dict = pickle.load(f)
         self.model = GAVE(state_dim=16, act_dim=1,
-                                hidden_size=model_param['hidden_size'], state_mean=normalize_dict["state_mean"],
-                                state_std=normalize_dict["state_std"], device=model_param['device'],
-                                learning_rate=model_param["learning_rate"], time_dim=model_param['time_dim'],
-                                block_config=model_param['block_config'], expectile=model_param['expectile']
-                                )
+                        hidden_size=model_param['hidden_size'], state_mean=normalize_dict["state_mean"],
+                        state_std=normalize_dict["state_std"], device=model_param['device'],
+                        learning_rate=model_param["learning_rate"], time_dim=model_param['time_dim'],
+                        block_config=model_param['block_config'], expectile=model_param['expectile']
+                        )
         self.model.load_net(model_path)
 
     def reset(self):
