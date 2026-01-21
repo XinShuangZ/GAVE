@@ -24,11 +24,9 @@ class EpisodeReplayBuffer(Dataset):
         self.device = "cpu"
         super(EpisodeReplayBuffer, self).__init__()
         self.scale = scale
-
         self.state_dim = state_dim
         self.act_dim = act_dim
-        training_data = pd.read_csv(data_path)
-
+        
         def safe_literal_eval(val):
             if pd.isna(val):
                 return val
@@ -37,12 +35,13 @@ class EpisodeReplayBuffer(Dataset):
             except (ValueError, SyntaxError):
                 print(ValueError)
                 return val
+        
+        training_data = pd.read_csv(data_path)
         training_data["state"] = training_data["state"].apply(safe_literal_eval)
         training_data["next_state"] = training_data["next_state"].apply(safe_literal_eval)
         self.trajectories = training_data
 
-        (self.states, self.rewards, self.actions, self.returns, self.traj_lens, self.dones,
-         self.next_states, self.budget, self.cpacons) = [], [], [], [], [], [], [], [], []
+        (self.states, self.rewards, self.actions, self.returns, self.traj_lens, self.dones, self.next_states, self.budget, self.cpacons) = [], [], [], [], [], [], [], [], []
         state = []
         reward = []
         action = []
@@ -91,11 +90,18 @@ class EpisodeReplayBuffer(Dataset):
             s_rtg = np.concatenate((self.states[i], self.next_states[i][-1].reshape((1,-1))),axis=0)
             curr_score = getScore(self.budget[i][0], self.cpacons[i][0], s_rtg, all_reward)
             curr_score = curr_score[-1]-curr_score
-            self.trajectories.append(
-                {"observations": self.states[i], "actions": self.actions[i], "rewards": self.rewards[i],
-                 "dones": self.dones[i], "next_states": self.next_states[i], "budget": self.budget[i],
-                 "cpacons": self.cpacons[i], "all_reward": all_reward, "curr_score": curr_score})
-
+            self.trajectories.append({
+                "observations": self.states[i], 
+                "actions": self.actions[i], 
+                "rewards": self.rewards[i], 
+                "dones": self.dones[i], 
+                "next_states": self.next_states[i], 
+                "budget": self.budget[i], 
+                "cpacons": self.cpacons[i], 
+                "all_reward": all_reward, 
+                "curr_score": curr_score   
+            })
+            
         self.K = K
         self.pct_traj = 1.
 

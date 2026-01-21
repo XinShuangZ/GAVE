@@ -30,9 +30,8 @@ class DtBiddingStrategy(BaseBiddingStrategy):
         "activation_function": "relu",
         "n_position": 1024,
         "resid_pdrop": 0.1,
-        "attn_pdrop": 0.1,
-    }
-}):
+        "attn_pdrop": 0.1,}
+    }):
         super().__init__(budget, name, cpa, category)
 
         file_name = os.path.dirname(os.path.realpath(__file__))
@@ -44,10 +43,14 @@ class DtBiddingStrategy(BaseBiddingStrategy):
         with open(picklePath, 'rb') as f:
             normalize_dict = pickle.load(f)
         self.model = GAVE(state_dim=16, act_dim=1,
-                        hidden_size=model_param['hidden_size'], state_mean=normalize_dict["state_mean"],
-                        state_std=normalize_dict["state_std"], device=model_param['device'],
-                        learning_rate=model_param["learning_rate"], time_dim=model_param['time_dim'],
-                        block_config=model_param['block_config'], expectile=model_param['expectile']
+                        hidden_size=model_param['hidden_size'], 
+                        state_mean=normalize_dict["state_mean"],
+                        state_std=normalize_dict["state_std"], 
+                        device=model_param['device'],
+                        learning_rate=model_param["learning_rate"], 
+                        time_dim=model_param['time_dim'],
+                        block_config=model_param['block_config'], 
+                        expectile=model_param['expectile']
                         )
         self.model.load_net(model_path)
 
