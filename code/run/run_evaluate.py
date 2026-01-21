@@ -17,8 +17,6 @@ logger = logging.getLogger(__name__)
 def getConversion(reward, cpa, cpa_constraint):
     return reward
 
-
-
 def getScore_nips(reward, cpa, cpa_constraint):
     beta = 2
     penalty = 1
@@ -26,7 +24,6 @@ def getScore_nips(reward, cpa, cpa_constraint):
         coef = cpa_constraint / (cpa + 1e-10)
         penalty = pow(coef, beta)
     return penalty * reward
-
 
 def getScore1_nips(reward, cpa, cpa_constraint):
     beta = 5
@@ -36,13 +33,10 @@ def getScore1_nips(reward, cpa, cpa_constraint):
         penalty = pow(coef, beta)
     return penalty * reward
 
-
 def run_test(file_path='./data/traffic/period-7.csv', model_name="dt.pt", model_param={}):
-
-
+    # 从指定路径加载流量数据
     data_loader = TestDataLoader(file_path=file_path)
-
-
+    # 实例化离线模拟环境，获取所有待测试的广告主keys和对应的数据字典
     env = OfflineEnv()
     keys, test_dict = data_loader.keys, data_loader.test_dict
     overall_score = 0.0
@@ -52,7 +46,13 @@ def run_test(file_path='./data/traffic/period-7.csv', model_name="dt.pt", model_
     for key in keys:
         num_timeStepIndex, pValues, pValueSigmas, leastWinningCosts, budget, cpa, category = data_loader.mock_data(key)
         budget = budget * model_param["budget_rate"]
-        agent = PlayerBiddingStrategy(model_name=model_name, model_param=model_param, budget=budget, cpa=cpa, category=category)
+        agent = PlayerBiddingStrategy(
+            model_name=model_name,
+            model_param=model_param,
+            budget=budget,
+            cpa=cpa,
+            category=category
+        )
         print(agent.name)
         rewards = np.zeros(num_timeStepIndex)
         history = {
@@ -73,24 +73,40 @@ def run_test(file_path='./data/traffic/period-7.csv', model_name="dt.pt", model_
             if agent.remaining_budget < env.min_remaining_budget:
                 bid = np.zeros(pValue.shape[0])
             else:
+                bid = agent.bidding(
+                    timeStep_index,
+                    pValue,
+                    pValueSigma,
+                    history["historyPValueInfo"],
+                    history["historyBids"],
+                    history["historyAuctionResult"],
+                    history["historyImpressionResult"],
+                    history["historyLeastWinningCost"]
+                )
 
-                bid = agent.bidding(timeStep_index, pValue, pValueSigma, history["historyPValueInfo"],
-                                    history["historyBids"],
-                                    history["historyAuctionResult"], history["historyImpressionResult"],
-                                    history["historyLeastWinningCost"])
-
-            tick_value, tick_cost, tick_status, tick_conversion = env.simulate_ad_bidding(pValue, pValueSigma, bid,
-                                                                                          leastWinningCost)
+            tick_value, tick_cost, tick_status, tick_conversion = env.simulate_ad_bidding(
+                pValue, 
+                pValueSigma,
+                bid, 
+                leastWinningCost
+            )
 
             # Handling over-cost (a timestep costs more than the remaining budget of the bidding advertiser)
             over_cost_ratio = max((np.sum(tick_cost) - agent.remaining_budget) / (np.sum(tick_cost) + 1e-4), 0)
             while over_cost_ratio > 0:
                 pv_index = np.where(tick_status == 1)[0]
-                dropped_pv_index = np.random.choice(pv_index, int(math.ceil(pv_index.shape[0] * over_cost_ratio)),
-                                                    replace=False)
+                dropped_pv_index = np.random.choice(
+                    pv_index,
+                    int(math.ceil(pv_index.shape[0] * over_cost_ratio)), 
+                    replace=False
+                )
                 bid[dropped_pv_index] = 0
-                tick_value, tick_cost, tick_status, tick_conversion = env.simulate_ad_bidding(pValue, pValueSigma, bid,
-                                                                                              leastWinningCost)
+                tick_value, tick_cost, tick_status, tick_conversion = env.simulate_ad_bidding(
+                    pValue, 
+                    pValueSigma,
+                    bid, 
+                    leastWinningCost
+                )
                 over_cost_ratio = max((np.sum(tick_cost) - agent.remaining_budget) / (np.sum(tick_cost) + 1e-4), 0)
 
             agent.remaining_budget -= np.sum(tick_cost)
@@ -100,9 +116,18 @@ def run_test(file_path='./data/traffic/period-7.csv', model_name="dt.pt", model_
             history["historyBids"].append(bid)
             history["historyLeastWinningCost"].append(leastWinningCost)
             temAuctionResult = np.array(
-                [(tick_status[i], tick_status[i], tick_cost[i]) for i in range(tick_status.shape[0])])
+                [
+                    (tick_status[i], tick_status[i], tick_cost[i]) 
+                    for i in range(tick_status.shape[0])
+                ]
+            )
             history["historyAuctionResult"].append(temAuctionResult)
-            temImpressionResult = np.array([(tick_conversion[i], tick_conversion[i]) for i in range(pValue.shape[0])])
+            temImpressionResult = np.array(
+                [
+                    (tick_conversion[i], tick_conversion[i])
+                    for i in range(pValue.shape[0])
+                ]
+            )
             history["historyImpressionResult"].append(temImpressionResult)
             logger.info(f'Timestep Index: {timeStep_index + 1} End')
         all_reward = np.sum(rewards)

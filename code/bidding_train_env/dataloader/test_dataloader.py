@@ -6,7 +6,6 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
-
 class TestDataLoader:
     def __init__(self, file_path="./data/log.csv"):
         self.file_path = file_path
@@ -38,8 +37,8 @@ class TestDataLoader:
         budget = data['budget'].iloc[0]
         cpa = data['CPAConstraint'].iloc[0]
         category = data['advertiserCategoryIndex'].iloc[0]
+        
         return num_timeStepIndex, pValues, pValueSigmas, leastWinningCosts, budget, cpa, category
-
 
 if __name__ == '__main__':
     pass
